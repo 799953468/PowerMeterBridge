@@ -1,0 +1,28 @@
+{
+  "SourceUrl": "http://www.wap.cnyiot.com/nat/pay.aspx?mid=19000751693",
+  "FailureRetrySeconds": 60,
+  "Http": {
+    "TimeoutSeconds": 20,
+    "UserAgent": "Mozilla/5.0 (compatible; CnyiotPowerMqttBridge/1.0; +https://github.com/dotnet)"
+  },
+  "Mqtt": {
+    "Host": "192.168.1.10",
+    "Port": 1883,
+    "ClientId": "cnyiot-power-mqtt-bridge",
+    "Username": "mqtt-user",
+    "Password": "mqtt-password",
+    "KeepAliveSeconds": 60
+  },
+  "HomeAssistant": {
+    "DiscoveryPrefix": "homeassistant",
+    "DeviceId": "cnyiot_meter_19000751693",
+    "FriendlyName": "辰域智控 19000751693",
+    "BaseTopic": "home/cnyiot/19000751693",
+    "Currency": "CNY",
+    "Manufacturer": "CNYIoT",
+    "Model": "Prepaid Electric Meter"
+  },
+  "Storage": {
+    "StateFilePath": "data/bridge-state.json"
+  }
+}
