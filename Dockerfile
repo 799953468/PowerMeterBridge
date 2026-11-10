@@ -7,6 +7,9 @@ COPY src/PowerMeterBridge/PowerMeterBridge.csproj src/PowerMeterBridge/
 COPY appsettings.json.example .
 RUN dotnet restore src/PowerMeterBridge/PowerMeterBridge.csproj
 
+# Native AOT toolchain for Alpine Linux targets
+RUN apk add --no-cache clang build-base zlib-dev
+
 # Copy source code
 COPY . .
 
