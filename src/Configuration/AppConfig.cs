@@ -2,25 +2,57 @@ using System.Text.Json;
 
 namespace PowerMeterBridge;
 
+/// <summary>
+/// 应用全局配置
+/// 支持多个设备的配置
+/// </summary>
 public sealed class AppConfig
 {
-    public string SourceUrl { get; set; } = "http://www.wap.cnyiot.com/nat/pay.aspx?mid=19000751693";
-    public int FailureRetrySeconds { get; set; } = 60;
-    public HttpOptions Http { get; set; } = new();
+    /// <summary>MQTT 连接配置</summary>
     public MqttOptions Mqtt { get; set; } = new();
+
+    /// <summary>Home Assistant 集成配置</summary>
     public HomeAssistantOptions HomeAssistant { get; set; } = new();
+
+    /// <summary>存储配置</summary>
     public StorageOptions Storage { get; set; } = new();
+
+    /// <summary>轮询间隔（秒）</summary>
+    public int PollIntervalSeconds { get; set; } = 60;
+
+    /// <summary>失败重试间隔（秒）</summary>
+    public int FailureRetrySeconds { get; set; } = 60;
+
+    /// <summary>所有设备配置</summary>
+    public List<DeviceConfig> Devices { get; set; } = [];
 
     public void Validate()
     {
-        if (!Uri.TryCreate(SourceUrl, UriKind.Absolute, out _))
+        if (Devices.Count == 0)
         {
-            throw new InvalidOperationException("SourceUrl 不是合法的绝对地址。");
+            throw new InvalidOperationException("至少需要配置一个设备。");
+        }
+
+        if (PollIntervalSeconds <= 0)
+        {
+            throw new InvalidOperationException("PollIntervalSeconds 必须大于 0。");
         }
 
         if (FailureRetrySeconds <= 0)
         {
             throw new InvalidOperationException("FailureRetrySeconds 必须大于 0。");
+        }
+
+        // 检查设备 ID 唯一性
+        var deviceIds = new HashSet<string>();
+        foreach (var device in Devices)
+        {
+            if (!deviceIds.Add(device.Id))
+            {
+                throw new InvalidOperationException($"重复的设备 ID：'{device.Id}'");
+            }
+
+            device.Validate();
         }
 
         Mqtt.Validate();
@@ -71,34 +103,17 @@ public sealed class MqttOptions
 
 public sealed class HomeAssistantOptions
 {
+    /// <summary>Home Assistant MQTT Discovery 前缀</summary>
     public string DiscoveryPrefix { get; set; } = "homeassistant";
-    public string DeviceId { get; set; } = "cnyiot_meter_19000751693";
-    public string FriendlyName { get; set; } = "辰域智控 19000751693";
-    public string BaseTopic { get; set; } = "home/cnyiot/19000751693";
+
+    /// <summary>货币单位代码（如 CNY, USD）</summary>
     public string Currency { get; set; } = "CNY";
-    public string Manufacturer { get; set; } = "CNYIoT";
-    public string Model { get; set; } = "Prepaid Electric Meter";
 
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(DiscoveryPrefix))
         {
             throw new InvalidOperationException("HomeAssistant.DiscoveryPrefix 不能为空。");
-        }
-
-        if (string.IsNullOrWhiteSpace(DeviceId))
-        {
-            throw new InvalidOperationException("HomeAssistant.DeviceId 不能为空。");
-        }
-
-        if (string.IsNullOrWhiteSpace(FriendlyName))
-        {
-            throw new InvalidOperationException("HomeAssistant.FriendlyName 不能为空。");
-        }
-
-        if (string.IsNullOrWhiteSpace(BaseTopic))
-        {
-            throw new InvalidOperationException("HomeAssistant.BaseTopic 不能为空。");
         }
 
         if (string.IsNullOrWhiteSpace(Currency))
@@ -110,13 +125,14 @@ public sealed class HomeAssistantOptions
 
 public sealed class StorageOptions
 {
-    public string StateFilePath { get; set; } = "data/bridge-state.json";
+    /// <summary>状态文件存储目录</summary>
+    public string StateDirectory { get; set; } = "data/states";
 
     public void Validate()
     {
-        if (string.IsNullOrWhiteSpace(StateFilePath))
+        if (string.IsNullOrWhiteSpace(StateDirectory))
         {
-            throw new InvalidOperationException("Storage.StateFilePath 不能为空。");
+            throw new InvalidOperationException("Storage.StateDirectory 不能为空。");
         }
     }
 }
@@ -127,7 +143,7 @@ public static class AppConfigLoader
 {
     public static LoadedAppConfig Load(string[] args)
     {
-        var candidate = args.Length > 1 ? args[1] : "appsettings.json";
+        var candidate = args.Length > 0 ? args[0] : "appsettings.json";
         var currentDirectoryPath = Path.GetFullPath(candidate, Directory.GetCurrentDirectory());
         var baseDirectoryPath = Path.GetFullPath(candidate, AppContext.BaseDirectory);
 

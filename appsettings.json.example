@@ -1,28 +1,42 @@
 {
-  "SourceUrl": "http://www.wap.cnyiot.com/nat/pay.aspx?mid=19000751693",
-  "FailureRetrySeconds": 60,
-  "Http": {
-    "TimeoutSeconds": 20,
-    "UserAgent": "Mozilla/5.0 (compatible; CnyiotPowerMqttBridge/1.0; +https://github.com/dotnet)"
+  "mqtt": {
+    "host": "192.168.1.10",
+    "port": 1883,
+    "clientId": "power-meter-bridge",
+    "username": "mqtt-user",
+    "password": "mqtt-password",
+    "keepAliveSeconds": 60
   },
-  "Mqtt": {
-    "Host": "192.168.1.10",
-    "Port": 1883,
-    "ClientId": "cnyiot-power-mqtt-bridge",
-    "Username": "mqtt-user",
-    "Password": "mqtt-password",
-    "KeepAliveSeconds": 60
+  "homeAssistant": {
+    "discoveryPrefix": "homeassistant",
+    "currency": "CNY"
   },
-  "HomeAssistant": {
-    "DiscoveryPrefix": "homeassistant",
-    "DeviceId": "cnyiot_meter_19000751693",
-    "FriendlyName": "辰域智控 19000751693",
-    "BaseTopic": "home/cnyiot/19000751693",
-    "Currency": "CNY",
-    "Manufacturer": "CNYIoT",
-    "Model": "Prepaid Electric Meter"
+  "storage": {
+    "stateDirectory": "data/states"
   },
-  "Storage": {
-    "StateFilePath": "data/bridge-state.json"
-  }
+  "pollIntervalSeconds": 60,
+  "failureRetrySeconds": 30,
+  "devices": [
+    {
+      "id": "meter-001",
+      "name": "客厅电表",
+      "brand": "cnyiot",
+      "type": "prepaid_meter",
+      "enabled": true,
+      "config": {
+        "sourceUrl": "http://www.wap.cnyiot.com/nat/pay.aspx?mid=19000751693"
+      },
+      "ha": {
+        "deviceId": "cnyiot_meter_001",
+        "friendlyName": "客厅电表",
+        "baseTopic": "home/meters/001",
+        "manufacturer": "CNYIoT",
+        "model": "Prepaid Electric Meter"
+      },
+      "http": {
+        "timeoutSeconds": 20,
+        "userAgent": "Mozilla/5.0 (compatible; PowerMeterBridge/2.0; +https://github.com/dotnet)"
+      }
+    }
+  ]
 }

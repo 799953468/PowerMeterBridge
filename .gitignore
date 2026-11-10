@@ -87,6 +87,9 @@ appsettings.*.json
 data/
 *.log
 
+# Documentation
+docs/
+
 # Publish profiles
 PublishProfiles/
 *.pubxml
