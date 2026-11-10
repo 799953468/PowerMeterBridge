@@ -98,22 +98,27 @@ jobs:
             runtime: linux-x64
             artifact_name: PowerMeterBridge
             asset_name: powermeterbridge-linux-x64
+            release_asset_name: powermeterbridge-linux-x64.tar.gz
           - os: ubuntu-24.04-arm
             runtime: linux-arm64
             artifact_name: PowerMeterBridge
             asset_name: powermeterbridge-linux-arm64
+            release_asset_name: powermeterbridge-linux-arm64.tar.gz
           - os: macos-latest
             runtime: osx-x64
             artifact_name: PowerMeterBridge
             asset_name: powermeterbridge-macos-x64
+            release_asset_name: powermeterbridge-macos-x64.tar.gz
           - os: macos-latest
             runtime: osx-arm64
             artifact_name: PowerMeterBridge
             asset_name: powermeterbridge-macos-arm64
+            release_asset_name: powermeterbridge-macos-arm64.tar.gz
           - os: windows-latest
             runtime: win-x64
             artifact_name: PowerMeterBridge.exe
             asset_name: powermeterbridge-windows-x64.exe
+            release_asset_name: powermeterbridge-windows-x64.exe.zip
 
     steps:
     - name: Checkout code
@@ -129,7 +134,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${{ needs.create-release.outputs.tag }}" --jq '.assets[].name' | grep -Fxq '${{ matrix.asset_name }}'; then
+        if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${{ needs.create-release.outputs.tag }}" --jq '.assets[].name' | grep -Fxq '${{ matrix.release_asset_name }}'; then
           echo "exists=true" >> "$GITHUB_OUTPUT"
         else
           echo "exists=false" >> "$GITHUB_OUTPUT"
