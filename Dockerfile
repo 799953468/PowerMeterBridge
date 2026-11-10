@@ -3,8 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:11.0-alpine AS build
 WORKDIR /src
 
 # Copy project files
-COPY PowerMeterBridge.csproj .
-RUN dotnet restore
+COPY src/PowerMeterBridge/PowerMeterBridge.csproj src/PowerMeterBridge/
+COPY appsettings.json.example .
+RUN dotnet restore src/PowerMeterBridge/PowerMeterBridge.csproj
 
 # Copy source code
 COPY . .
@@ -17,7 +18,7 @@ RUN case "$TARGETARCH" in \
       "arm64") RUNTIME_ID=linux-musl-arm64 ;; \
       *) echo "Unsupported architecture: $TARGETARCH" && exit 1 ;; \
     esac && \
-    dotnet publish -c Release \
+    dotnet publish src/PowerMeterBridge/PowerMeterBridge.csproj -c Release \
       -r $RUNTIME_ID \
       --self-contained \
       -o /app/publish \

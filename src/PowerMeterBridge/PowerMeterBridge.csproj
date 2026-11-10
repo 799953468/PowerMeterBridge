@@ -26,20 +26,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="appsettings.json.example">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Remove="CrossOver_26_2_TNT.iso" />
-  </ItemGroup>
-
-  <!-- Exclude test directory from main project -->
-  <ItemGroup>
-    <Compile Remove="tests\**" />
-    <EmbeddedResource Remove="tests\**" />
-    <None Remove="tests\**" />
+    <None Include="../../appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" Condition="Exists('../../appsettings.json')" />
+    <None Include="../../appsettings.json.example" Link="appsettings.json.example" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

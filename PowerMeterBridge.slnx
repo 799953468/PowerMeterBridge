@@ -2,5 +2,5 @@
   <Folder Name="/tests/">
     <Project Path="tests/PowerMeterBridge.Tests/PowerMeterBridge.Tests.csproj" />
   </Folder>
-  <Project Path="PowerMeterBridge.csproj" />
+  <Project Path="src/PowerMeterBridge/PowerMeterBridge.csproj" />
 </Solution>

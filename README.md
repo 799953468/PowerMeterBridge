@@ -39,10 +39,10 @@ cd PowerMeterBridge
 dotnet restore
 
 # Build and run (debug mode)
-dotnet run -- 60
+dotnet run --project src/PowerMeterBridge/PowerMeterBridge.csproj -- 60
 
 # Publish as native AOT binary (production)
-dotnet publish -c Release -r linux-x64 -o ./publish
+dotnet publish src/PowerMeterBridge/PowerMeterBridge.csproj -c Release -r linux-x64 -o ./publish
 ./publish/PowerMeterBridge 60
 ```
 
@@ -127,10 +127,10 @@ Publish for your target platform:
 
 ```bash
 # Run with 60-second polling interval
-dotnet run -- 60
+dotnet run --project src/PowerMeterBridge/PowerMeterBridge.csproj -- 60
 
 # Run with custom config file
-dotnet run -- 60 /path/to/config.json
+dotnet run --project src/PowerMeterBridge/PowerMeterBridge.csproj -- 60 /path/to/config.json
 
 # Production (AOT binary)
 ./PowerMeterBridge 60
@@ -235,24 +235,22 @@ The bridge includes robust error handling:
 
 ```
 PowerMeterBridge/
-├── Program.cs                          # Entry point and main loop
+├── PowerMeterBridge.slnx               # Solution
 ├── appsettings.json                    # Configuration file
 ├── appsettings.json.example            # Configuration template
-├── PowerMeterBridge.csproj             # Project file
+├── Dockerfile
+├── docker-compose.yml
 ├── data/
 │   └── bridge-state.json               # Persistent state
 └── src/
-    ├── Configuration/
-    │   ├── AppConfig.cs                # Configuration models
-    │   └── AppConfigJsonContext.cs     # JSON source generator context
-    ├── Models/
-    │   ├── BridgeState.cs              # State management models
-    │   └── BridgeStateJsonContext.cs   # JSON source generator context
-    └── Services/
-        ├── BridgeStateStore.cs         # State persistence
-        ├── CnyiotPageClient.cs         # Web scraping client
-        ├── HomeAssistantMqttPublisher.cs  # MQTT publishing
-        └── MqttMessageJsonContext.cs   # JSON source generator context
+    └── PowerMeterBridge/
+        ├── PowerMeterBridge.csproj     # Application project
+        ├── Program.cs                  # Entry point and main loop
+        ├── Configuration/              # Application configuration
+        ├── Models/                     # Domain and state models
+        └── Services/                   # Meter clients, orchestration, MQTT
+tests/
+└── PowerMeterBridge.Tests/             # Unit tests
 ```
 
 ### Adding Features
@@ -284,7 +282,7 @@ The codebase uses:
 For development and debugging:
 
 ```bash
-dotnet run --configuration Debug -- 60
+dotnet run --project src/PowerMeterBridge/PowerMeterBridge.csproj --configuration Debug -- 60
 ```
 
 ## License

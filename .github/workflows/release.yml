@@ -97,7 +97,7 @@ jobs:
 
     - name: Publish AOT binary
       run: |
-        dotnet publish -c Release \
+        dotnet publish src/PowerMeterBridge/PowerMeterBridge.csproj -c Release \
           -r ${{ matrix.runtime }} \
           --self-contained \
           -o ./publish \

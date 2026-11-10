@@ -59,7 +59,7 @@ test:unit:
   image: mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}
   script:
     - |
-      dotnet publish -c Release \
+      dotnet publish src/PowerMeterBridge/PowerMeterBridge.csproj -c Release \
         -r ${RUNTIME_ID} \
         --self-contained \
         -o ./publish/${RUNTIME_ID} \
