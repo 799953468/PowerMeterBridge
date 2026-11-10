@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '11.0.x'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        body: |
+          ## PowerMeterBridge ${{ steps.get_version.outputs.version }}
+
+          ### Installation
+
+          Download the binary for your platform and run:
+
+          ```bash
+          chmod +x PowerMeterBridge  # Linux/macOS only
+          ./PowerMeterBridge 60
+          ```
+
+          ### Docker
+
+          ```bash
+          docker pull ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.version }}
+          ```
+
+          ### Changes
+
+          See [CHANGELOG.md](CHANGELOG.md) for details.
+
+  build-and-upload:
+    name: Build and Upload (${{ matrix.runtime }})
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+            artifact_name: PowerMeterBridge
+            asset_name: powermeterbridge-linux-x64
+          - os: ubuntu-latest
+            runtime: linux-arm64
+            artifact_name: PowerMeterBridge
+            asset_name: powermeterbridge-linux-arm64
+          - os: macos-latest
+            runtime: osx-x64
+            artifact_name: PowerMeterBridge
+            asset_name: powermeterbridge-macos-x64
+          - os: macos-latest
+            runtime: osx-arm64
+            artifact_name: PowerMeterBridge
+            asset_name: powermeterbridge-macos-arm64
+          - os: windows-latest
+            runtime: win-x64
+            artifact_name: PowerMeterBridge.exe
+            asset_name: powermeterbridge-windows-x64.exe
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Publish AOT binary
+      run: |
+        dotnet publish -c Release \
+          -r ${{ matrix.runtime }} \
+          --self-contained \
+          -o ./publish \
+          -p:PublishAot=true \
+          -p:StripSymbols=true \
+          -p:IlcOptimizationPreference=Speed
+      shell: bash
+
+    - name: Package binary (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        cd publish
+        tar czf ../${{ matrix.asset_name }}.tar.gz \
+          ${{ matrix.artifact_name }} \
+          appsettings.json.example
+        cd ..
+
+    - name: Package binary (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd publish
+        7z a ../${{ matrix.asset_name }}.zip `
+          ${{ matrix.artifact_name }} `
+          appsettings.json.example
+        cd ..
+      shell: pwsh
+
+    - name: Upload Release Asset (Unix)
+      if: runner.os != 'Windows'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./${{ matrix.asset_name }}.tar.gz
+        asset_name: ${{ matrix.asset_name }}.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload Release Asset (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./${{ matrix.asset_name }}.zip
+        asset_name: ${{ matrix.asset_name }}.zip
+        asset_content_type: application/zip

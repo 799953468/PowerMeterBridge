@@ -16,6 +16,9 @@
     <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
     <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+
+    <!-- Make internals visible to test project -->
+    <InternalsVisibleTo>PowerMeterBridge.Tests</InternalsVisibleTo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +33,13 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Remove="CrossOver_26_2_TNT.iso" />
+  </ItemGroup>
+
+  <!-- Exclude test directory from main project -->
+  <ItemGroup>
+    <Compile Remove="tests\**" />
+    <EmbeddedResource Remove="tests\**" />
+    <None Remove="tests\**" />
   </ItemGroup>
 
 </Project>

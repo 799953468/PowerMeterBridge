@@ -1,0 +1,179 @@
+variables:
+  DOTNET_VERSION: "11.0"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  LATEST_TAG: $CI_REGISTRY_IMAGE:latest
+
+stages:
+  - build
+  - test
+  - publish
+  - docker
+  - release
+
+# Build stage
+.build_template: &build_template
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}
+  before_script:
+    - dotnet --version
+  script:
+    - dotnet restore
+    - dotnet build --no-restore --configuration Release
+  artifacts:
+    paths:
+      - bin/
+      - obj/
+    expire_in: 1 hour
+  only:
+    - tags
+
+build:linux:
+  <<: *build_template
+  tags:
+    - linux
+
+# Test stage
+test:unit:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}
+  script:
+    - dotnet restore
+    - dotnet build --no-restore --configuration Release
+    - dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+  artifacts:
+    when: always
+    paths:
+      - '**/test-results.trx'
+    reports:
+      junit: '**/test-results.trx'
+    expire_in: 7 days
+  only:
+    - branches
+    - merge_requests
+
+# Publish AOT binaries
+.publish_template: &publish_template
+  stage: publish
+  image: mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}
+  script:
+    - |
+      dotnet publish -c Release \
+        -r ${RUNTIME_ID} \
+        --self-contained \
+        -o ./publish/${RUNTIME_ID} \
+        -p:PublishAot=true \
+        -p:StripSymbols=true \
+        -p:IlcOptimizationPreference=Speed
+  artifacts:
+    name: "powermeterbridge-${RUNTIME_ID}-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - publish/${RUNTIME_ID}/
+    expire_in: 7 days
+  only:
+    - tags
+
+publish:linux-x64:
+  <<: *publish_template
+  variables:
+    RUNTIME_ID: linux-x64
+
+publish:linux-arm64:
+  <<: *publish_template
+  variables:
+    RUNTIME_ID: linux-arm64
+
+publish:osx-x64:
+  <<: *publish_template
+  variables:
+    RUNTIME_ID: osx-x64
+
+publish:osx-arm64:
+  <<: *publish_template
+  variables:
+    RUNTIME_ID: osx-arm64
+
+publish:win-x64:
+  <<: *publish_template
+  variables:
+    RUNTIME_ID: win-x64
+
+# Docker build and push
+docker:build:
+  stage: docker
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - |
+      docker buildx create --use --name multiarch-builder || true
+      docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        --tag $IMAGE_TAG \
+        --tag $LATEST_TAG \
+        --push \
+        --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:buildcache \
+        --cache-to type=registry,ref=$CI_REGISTRY_IMAGE:buildcache,mode=max \
+        .
+  only:
+    - tags
+  tags:
+    - docker
+
+# Release stage (only for tags)
+release:create:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  dependencies:
+    - publish:linux-x64
+    - publish:linux-arm64
+    - publish:osx-x64
+    - publish:osx-arm64
+    - publish:win-x64
+  script:
+    - echo "Creating release for $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: 'Release $CI_COMMIT_TAG'
+    description: |
+      ## PowerMeterBridge $CI_COMMIT_TAG
+
+      ### Installation
+
+      Download the binary for your platform from the artifacts below.
+
+      ### Docker
+
+      ```bash
+      docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+      ```
+
+      ### Changes
+
+      See CHANGELOG.md for details.
+    assets:
+      links:
+        - name: 'Linux x64 Binary'
+          url: '$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/download?job=publish:linux-x64'
+        - name: 'Linux ARM64 Binary'
+          url: '$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/download?job=publish:linux-arm64'
+        - name: 'macOS x64 Binary'
+          url: '$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/download?job=publish:osx-x64'
+        - name: 'macOS ARM64 Binary'
+          url: '$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/download?job=publish:osx-arm64'
+        - name: 'Windows x64 Binary'
+          url: '$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/download?job=publish:win-x64'
+        - name: 'Docker Image'
+          url: '$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG'
+  only:
+    - tags
+
+# Cleanup job
+cleanup:
+  stage: .post
+  script:
+    - echo "Cleaning up..."
+  when: always

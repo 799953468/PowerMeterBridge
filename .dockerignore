@@ -1,0 +1,50 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Build outputs
+bin/
+obj/
+publish/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data and logs
+data/
+logs/
+*.log
+
+# Configuration (will be mounted)
+appsettings.json
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Test files
+tests/
+*.Tests/
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
