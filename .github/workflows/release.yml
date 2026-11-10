@@ -38,24 +38,23 @@ jobs:
         body: |
           ## PowerMeterBridge ${{ steps.get_version.outputs.version }}
 
+          First public release of PowerMeterBridge.
+
+          ### Features
+
+          - Collect CNYIoT prepaid electricity meter readings and support multiple configured meters.
+          - Publish readings and Home Assistant MQTT Discovery entities for energy, balance, consumption, cost, and current power.
+          - Persist per-device state and consumption history across restarts and meter recharges.
+          - Provide multi-architecture Docker images and native AOT binaries for Linux, macOS, and Windows.
+          - Include unit tests for meter readings and persisted bridge state.
+
           ### Installation
 
-          Download the binary for your platform and run:
+          Download the binary for your platform, extract the archive, configure `appsettings.json`, then run `PowerMeterBridge 60`.
 
-          ```bash
-          chmod +x PowerMeterBridge  # Linux/macOS only
-          ./PowerMeterBridge 60
-          ```
+          Docker image: `docker pull ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.version }}`
 
-          ### Docker
-
-          ```bash
-          docker pull ghcr.io/${{ github.repository }}:${{ steps.get_version.outputs.version }}
-          ```
-
-          ### Changes
-
-          See [CHANGELOG.md](CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md) for details.
 
   build-and-upload:
     name: Build and Upload (${{ matrix.runtime }})

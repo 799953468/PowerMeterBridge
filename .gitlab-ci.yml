@@ -141,17 +141,21 @@ release:create:
     description: |
       ## PowerMeterBridge $CI_COMMIT_TAG
 
+      First public release of PowerMeterBridge.
+
+      ### Features
+
+      - Collect CNYIoT prepaid electricity meter readings and support multiple configured meters.
+      - Publish readings and Home Assistant MQTT Discovery entities for energy, balance, consumption, cost, and current power.
+      - Persist per-device state and consumption history across restarts and meter recharges.
+      - Provide multi-architecture Docker images and native AOT binaries for Linux, macOS, and Windows.
+      - Include unit tests for meter readings and persisted bridge state.
+
       ### Installation
 
-      Download the binary for your platform from the artifacts below.
+      Download the binary for your platform from the release assets, configure `appsettings.json`, then run `PowerMeterBridge 60`.
 
-      ### Docker
-
-      ```bash
-      docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
-      ```
-
-      ### Changes
+      Docker image: `$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG`
 
       See CHANGELOG.md for details.
     assets:
