@@ -8,6 +8,14 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>PowerMeterBridge</RootNamespace>
     <AssemblyName>PowerMeterBridge</AssemblyName>
+
+    <!-- AOT Publishing -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <StripSymbols>true</StripSymbols>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>

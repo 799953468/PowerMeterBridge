@@ -1,91 +1,301 @@
 # PowerMeterBridge
 
-控制台程序，启动时从命令行传入刷新间隔秒数，定时读取辰域智控充值页里的
-`剩余电量`、`剩余金额`，并通过 MQTT 自动注册到 Home Assistant。
+A high-performance MQTT bridge service that scrapes CNYIoT prepaid electric meter readings and publishes them to Home Assistant via MQTT with automatic discovery support.
 
-## 功能
+## Features
 
-- 定时抓取目标网页
-- 发布 Home Assistant MQTT Discovery 配置
-- 发布 5 个传感器
-  - `剩余电量`
-  - `剩余金额`
-  - `累计用电`
-  - `累计花费`
-  - `实时功率` ⚡ (根据用电量和时间差自动计算)
-- 本地持久化累计值
-  - 因为网页只给”剩余值”，所以程序会根据每次轮询之间的下降量，累加出
-    `累计用电` 和 `累计花费`
-  - 如果中途充值导致剩余值上升，程序会把它当作充值，不会冲掉累计值
+- 🔄 **Automatic Polling**: Continuously fetch real-time meter readings at configurable intervals
+- 🏠 **Home Assistant Integration**: Full MQTT Discovery support for seamless integration
+- 📊 **Rich Metrics**: Tracks remaining balance, power consumption, real-time power usage, and cumulative statistics
+- ⚡ **Native AOT Compilation**: Optimized for minimal memory footprint and fast startup
+- 💾 **Persistent State**: Maintains consumption history and calculates derived metrics
+- 🔒 **Robust Error Handling**: Automatic retry logic with configurable intervals
 
-## 项目结构
+## Architecture
+
+Built with .NET 11.0 and AOT compilation for maximum performance:
+
+- **Native AOT Publishing**: Produces self-contained, platform-specific binaries with minimal overhead
+- **Source-Generated JSON**: Uses `System.Text.Json` with source generators for AOT compatibility
+- **Minimal Dependencies**: Only requires `MQTTnet` (v5.2.0) for MQTT communication
+
+## Prerequisites
+
+- .NET 11 SDK (for building from source)
+- MQTT broker (e.g., Mosquitto)
+- Access to a CNYIoT prepaid electric meter web interface
+- (Optional) Home Assistant instance for full integration
+
+## Installation
+
+### Build from Source
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd PowerMeterBridge
+
+# Restore dependencies
+dotnet restore
+
+# Build and run (debug mode)
+dotnet run -- 60
+
+# Publish as native AOT binary (production)
+dotnet publish -c Release -r linux-x64 -o ./publish
+./publish/PowerMeterBridge 60
+```
+
+### Runtime Platforms
+
+Publish for your target platform:
+
+- **Linux (x64)**: `-r linux-x64`
+- **Linux (ARM64)**: `-r linux-arm64`
+- **macOS (Apple Silicon)**: `-r osx-arm64`
+- **macOS (Intel)**: `-r osx-x64`
+- **Windows**: `-r win-x64`
+
+## Configuration
+
+### Initial Setup
+
+1. Copy the example configuration:
+   ```bash
+   cp appsettings.json.example appsettings.json
+   ```
+
+2. Edit `appsettings.json` with your settings:
+
+```json
+{
+  "SourceUrl": "http://www.wap.cnyiot.com/nat/pay.aspx?mid=YOUR_METER_ID",
+  "FailureRetrySeconds": 60,
+  "Http": {
+    "TimeoutSeconds": 20,
+    "UserAgent": "Mozilla/5.0 (compatible; CnyiotPowerMqttBridge/1.0)"
+  },
+  "Mqtt": {
+    "Host": "192.168.1.10",
+    "Port": 1883,
+    "ClientId": "cnyiot-power-mqtt-bridge",
+    "Username": "mqtt-user",
+    "Password": "mqtt-password",
+    "KeepAliveSeconds": 60
+  },
+  "HomeAssistant": {
+    "DiscoveryPrefix": "homeassistant",
+    "DeviceId": "cnyiot_meter_YOUR_METER_ID",
+    "FriendlyName": "My Electric Meter",
+    "BaseTopic": "home/cnyiot/YOUR_METER_ID",
+    "Currency": "CNY",
+    "Manufacturer": "CNYIoT",
+    "Model": "Prepaid Electric Meter"
+  },
+  "Storage": {
+    "StateFilePath": "data/bridge-state.json"
+  }
+}
+```
+
+### Configuration Reference
+
+| Section | Key | Description | Default |
+|---------|-----|-------------|---------|
+| **Root** | `SourceUrl` | CNYIoT meter web interface URL | *Required* |
+| | `FailureRetrySeconds` | Retry delay after errors | `60` |
+| **Http** | `TimeoutSeconds` | HTTP request timeout | `20` |
+| | `UserAgent` | User-Agent header | Browser-like string |
+| **Mqtt** | `Host` | MQTT broker hostname | *Required* |
+| | `Port` | MQTT broker port | `1883` |
+| | `ClientId` | MQTT client identifier | *Required* |
+| | `Username` | MQTT authentication username | *Required* |
+| | `Password` | MQTT authentication password | *Required* |
+| | `KeepAliveSeconds` | MQTT keep-alive interval | `60` |
+| **HomeAssistant** | `DiscoveryPrefix` | MQTT discovery prefix | `homeassistant` |
+| | `DeviceId` | Unique device identifier | *Required* |
+| | `FriendlyName` | Display name in Home Assistant | *Required* |
+| | `BaseTopic` | Base MQTT topic for state | *Required* |
+| | `Currency` | Currency for cost metrics | `CNY` |
+| | `Manufacturer` | Device manufacturer | `CNYIoT` |
+| | `Model` | Device model name | `Prepaid Electric Meter` |
+| **Storage** | `StateFilePath` | Path for persistent state | `data/bridge-state.json` |
+
+## Usage
+
+### Basic Usage
+
+```bash
+# Run with 60-second polling interval
+dotnet run -- 60
+
+# Run with custom config file
+dotnet run -- 60 /path/to/config.json
+
+# Production (AOT binary)
+./PowerMeterBridge 60
+```
+
+### Command-Line Arguments
+
+```
+PowerMeterBridge <poll_interval_seconds> [config_file_path]
+```
+
+- **`poll_interval_seconds`** (required): Interval between meter readings in seconds (must be > 0)
+- **`config_file_path`** (optional): Path to configuration file (defaults to `appsettings.json`)
+
+### Example Output
+
+```
+Loaded configuration: appsettings.json
+State file: /app/data/bridge-state.json
+Polling interval: 60 seconds
+[2026-11-10 14:30:15] MeterId=19000751693 RemainingEnergy=125.45kWh RemainingAmount=125.45CNY TotalConsumed=1523.8642kWh TotalCost=1523.86CNY CurrentPower=2.450kW
+[2026-11-10 14:31:15] MeterId=19000751693 RemainingEnergy=125.44kWh RemainingAmount=125.44CNY TotalConsumed=1523.8743kWh TotalCost=1523.87CNY CurrentPower=2.436kW
+```
+
+## MQTT Topics & Payloads
+
+### Discovery Topics
+
+The bridge publishes Home Assistant MQTT Discovery messages for automatic entity creation:
+
+- `homeassistant/sensor/{device_id}_remaining_energy/config`
+- `homeassistant/sensor/{device_id}_remaining_balance/config`
+- `homeassistant/sensor/{device_id}_total_consumed/config`
+- `homeassistant/sensor/{device_id}_total_cost/config`
+- `homeassistant/sensor/{device_id}_current_power/config`
+- `homeassistant/sensor/{device_id}_price/config`
+
+### State Topic
+
+State updates are published to: `{BaseTopic}/state`
+
+Example payload:
+```json
+{
+  "meter_id": "19000751693",
+  "remaining_energy_kwh": 125.45,
+  "remaining_balance_cny": 125.45,
+  "total_consumed_kwh": 1523.8642,
+  "total_cost_cny": 1523.86,
+  "current_power_kw": 2.450,
+  "price_cny_per_kwh": 1.0,
+  "last_updated": "2026-11-10T14:30:15+08:00"
+}
+```
+
+## Home Assistant Integration
+
+Once running, the bridge will automatically create the following entities in Home Assistant:
+
+- **Remaining Energy** (kWh): How much prepaid electricity is left
+- **Remaining Balance** (CNY): Monetary balance remaining
+- **Total Energy Consumed** (kWh): Lifetime cumulative consumption
+- **Total Cost** (CNY): Lifetime cumulative cost
+- **Current Power** (kW): Real-time power consumption rate
+- **Electricity Price** (CNY/kWh): Current electricity rate
+
+All entities will appear under a single device named according to your `FriendlyName` configuration.
+
+## Persistent State
+
+The bridge maintains state in `data/bridge-state.json`:
+
+```json
+{
+  "last_remaining_energy_kwh": 125.45,
+  "last_remaining_amount_cny": 125.45,
+  "total_consumed_energy_kwh": 1523.8642,
+  "total_consumed_cost_cny": 1523.86,
+  "current_power_kw": 2.450,
+  "last_updated": "2026-11-10T14:30:15+08:00"
+}
+```
+
+This file is automatically created and updated. It enables the bridge to:
+
+- Calculate cumulative consumption across restarts
+- Compute real-time power usage from consumption deltas
+- Preserve history even if the meter is recharged
+
+## Error Handling
+
+The bridge includes robust error handling:
+
+- **Network Failures**: Automatic retry after `FailureRetrySeconds`
+- **Parse Errors**: Logged with retry on next poll cycle
+- **MQTT Disconnections**: Automatic reconnection attempts
+- **Graceful Shutdown**: Ctrl+C cleanly disconnects MQTT and saves state
+
+## Development
+
+### Project Structure
 
 ```
 PowerMeterBridge/
-├── src/
-│   ├── Configuration/      # 配置相关
-│   │   └── AppConfig.cs
-│   ├── Models/             # 数据模型
-│   │   └── BridgeState.cs
-│   └── Services/           # 业务服务
-│       ├── BridgeStateStore.cs
-│       ├── CnyiotPageClient.cs
-│       └── HomeAssistantMqttPublisher.cs
-├── Program.cs              # 程序入口
-├── appsettings.json.example
-└── data/                   # 运行时数据
-    └── bridge-state.json
+├── Program.cs                          # Entry point and main loop
+├── appsettings.json                    # Configuration file
+├── appsettings.json.example            # Configuration template
+├── PowerMeterBridge.csproj             # Project file
+├── data/
+│   └── bridge-state.json               # Persistent state
+└── src/
+    ├── Configuration/
+    │   ├── AppConfig.cs                # Configuration models
+    │   └── AppConfigJsonContext.cs     # JSON source generator context
+    ├── Models/
+    │   ├── BridgeState.cs              # State management models
+    │   └── BridgeStateJsonContext.cs   # JSON source generator context
+    └── Services/
+        ├── BridgeStateStore.cs         # State persistence
+        ├── CnyiotPageClient.cs         # Web scraping client
+        ├── HomeAssistantMqttPublisher.cs  # MQTT publishing
+        └── MqttMessageJsonContext.cs   # JSON source generator context
 ```
 
-## 运行前修改
+### Adding Features
 
-编辑 `appsettings.json`，至少改这几项：
+The codebase uses:
 
-- `Mqtt.Host`
-- `Mqtt.Port`
-- `Mqtt.Username`
-- `Mqtt.Password`
+- **Source-generated JSON**: Add new properties to `*JsonContext.cs` files
+- **Regex-based scraping**: Update patterns in `CnyiotPageClient.cs`
+- **MQTT entity types**: Extend `HomeAssistantMqttPublisher.cs` for new sensors
 
-如果你要改 Home Assistant 的主题前缀，也可以改：
+## Troubleshooting
 
-- `HomeAssistant.DiscoveryPrefix`
-- `HomeAssistant.BaseTopic`
+### Common Issues
 
-## 运行
+**Problem**: "Configuration load failed"
+- **Solution**: Verify `appsettings.json` exists and is valid JSON
 
-第一个参数必须传 `刷新间隔秒数`。
+**Problem**: No data appearing in Home Assistant
+- **Solution**: Check that `DiscoveryPrefix` matches your Home Assistant MQTT configuration (usually `homeassistant`)
+
+**Problem**: "Scraping failed" errors
+- **Solution**: Verify the `SourceUrl` is correct and accessible from your network
+
+**Problem**: MQTT connection failures
+- **Solution**: Verify MQTT broker is running and credentials are correct
+
+### Debug Mode
+
+For development and debugging:
 
 ```bash
-dotnet run --project PowerMeterBridge -- 60
+dotnet run --configuration Debug -- 60
 ```
 
-如果要显式指定配置文件，放在第二个参数：
+## License
 
-```bash
-dotnet run --project PowerMeterBridge -- 60 appsettings.json
-```
+[Specify your license here]
 
-## Home Assistant 中的使用方式
+## Contributing
 
-程序启动后会自动创建以下实体：
+Contributions are welcome! Please open an issue or submit a pull request.
 
-- `剩余电量` - 当前剩余电量
-- `剩余金额` - 当前剩余金额
-- `累计用电` - 自程序启动以来的累计用电量
-- `累计花费` - 自程序启动以来的累计花费
-- `实时功率` - 根据两次读数间的电量差计算出的平均功率
+## Acknowledgments
 
-其中最关键的是 `累计用电`，它适合接到 Home Assistant 的 Energy Dashboard
-里作为能耗累计传感器使用。
-
-## 状态文件
-
-默认状态文件位置：
-
-```text
-data/bridge-state.json
-```
-
-如果你迁移机器或重装程序，记得一起保留这个文件，否则 `累计用电` 和
-`累计花费` 会从 0 重新开始。
-
+- Built with [MQTTnet](https://github.com/dotnet/MQTTnet)
+- Designed for [Home Assistant](https://www.home-assistant.io/)

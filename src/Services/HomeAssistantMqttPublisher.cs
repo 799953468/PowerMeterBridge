@@ -7,11 +7,6 @@ namespace PowerMeterBridge;
 
 public sealed class HomeAssistantMqttPublisher
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = false
-    };
-
     private readonly AppConfig _config;
     private readonly IMqttClient _client;
     private readonly MqttClientOptions _clientOptions;
@@ -45,19 +40,19 @@ public sealed class HomeAssistantMqttPublisher
     {
         await EnsureConnectedAsync(cancellationToken);
 
-        var payload = JsonSerializer.Serialize(
-            new
-            {
-                meter_id = reading.MeterId,
-                observed_at = reading.ObservedAt.ToString("O"),
-                remaining_energy_kwh = decimal.Round(reading.RemainingEnergyKwh, 2),
-                remaining_amount_cny = decimal.Round(reading.RemainingAmountCny, 2),
-                price_cny_per_kwh = decimal.Round(reading.PriceCnyPerKwh, 4),
-                total_energy_consumed_kwh = decimal.Round(state.TotalConsumedEnergyKwh, 4),
-                total_cost_spent_cny = decimal.Round(state.TotalConsumedCostCny, 2),
-                current_power_kw = state.CurrentPowerKw.HasValue ? decimal.Round(state.CurrentPowerKw.Value, 3) : (decimal?)null
-            },
-            JsonOptions);
+        var message = new MqttStateMessage
+        {
+            MeterId = reading.MeterId,
+            ObservedAt = reading.ObservedAt.ToString("O"),
+            RemainingEnergyKwh = decimal.Round(reading.RemainingEnergyKwh, 2),
+            RemainingAmountCny = decimal.Round(reading.RemainingAmountCny, 2),
+            PriceCnyPerKwh = decimal.Round(reading.PriceCnyPerKwh, 4),
+            TotalEnergyConsumedKwh = decimal.Round(state.TotalConsumedEnergyKwh, 4),
+            TotalCostSpentCny = decimal.Round(state.TotalConsumedCostCny, 2),
+            CurrentPowerKw = state.CurrentPowerKw.HasValue ? decimal.Round(state.CurrentPowerKw.Value, 3) : null
+        };
+
+        var payload = JsonSerializer.Serialize(message, MqttMessageJsonContext.Default.MqttStateMessage);
 
         await _client.PublishAsync(
             BuildMessage(StateTopic, payload, retain: true),
@@ -216,7 +211,7 @@ public sealed class HomeAssistantMqttPublisher
         var topic =
             $"{_config.HomeAssistant.DiscoveryPrefix.TrimEnd('/')}/sensor/{_config.HomeAssistant.DeviceId}/{objectId}/config";
 
-        return BuildMessage(topic, JsonSerializer.Serialize(payload, JsonOptions), retain: true);
+        return BuildMessage(topic, JsonSerializer.Serialize(payload, MqttMessageJsonContext.Default.DictionaryStringObject), retain: true);
     }
 
     private static MqttApplicationMessage BuildMessage(string topic, string payload, bool retain)

@@ -144,12 +144,7 @@ public static class AppConfigLoader
         }
 
         var json = File.ReadAllText(resolvedPath);
-        var config = JsonSerializer.Deserialize<AppConfig>(
-                         json,
-                         new JsonSerializerOptions
-                         {
-                             PropertyNameCaseInsensitive = true
-                         })
+        var config = JsonSerializer.Deserialize(json, AppConfigJsonContext.Default.AppConfig)
                      ?? throw new InvalidOperationException("配置文件解析失败。");
 
         config.Validate();

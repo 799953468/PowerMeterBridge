@@ -5,10 +5,6 @@ namespace PowerMeterBridge;
 public sealed class BridgeStateStore
 {
     private readonly string _stateFilePath;
-    private readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        WriteIndented = true
-    };
 
     public BridgeStateStore(string stateFilePath)
     {
@@ -23,7 +19,7 @@ public sealed class BridgeStateStore
         }
 
         await using var stream = File.OpenRead(_stateFilePath);
-        var state = await JsonSerializer.DeserializeAsync<BridgeState>(stream, _jsonOptions, cancellationToken);
+        var state = await JsonSerializer.DeserializeAsync(stream, BridgeStateJsonContext.Default.BridgeState, cancellationToken);
         return state ?? new BridgeState();
     }
 
@@ -36,6 +32,6 @@ public sealed class BridgeStateStore
         }
 
         await using var stream = File.Create(_stateFilePath);
-        await JsonSerializer.SerializeAsync(stream, state, _jsonOptions, cancellationToken);
+        await JsonSerializer.SerializeAsync(stream, state, BridgeStateJsonContext.Default.BridgeState, cancellationToken);
     }
 }
